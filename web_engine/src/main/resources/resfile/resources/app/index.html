@@ -24,7 +24,7 @@
 <body>
   <h1>ETS Bridge</h1>
   <div id="result"></div>
-  <div class="capture-meta" style="margin-bottom: 8px;">快捷键：<b>Ctrl+Shift+A</b> 区域截图 · <b>Ctrl+Shift+F</b> 全屏截图（窗口会自动隐藏）</div>
+  <div class="capture-meta" style="margin-bottom: 8px;">快捷键：<b>Ctrl+Shift+F</b> 截全屏 + 编辑（窗口会自动隐藏）</div>
 
   <button class="btn" onclick="doQueryDeviceInfo()">queryDeviceInfo</button>
   <button class="btn" onclick="doEchoAsync()">echoAsync</button>
@@ -330,12 +330,10 @@
     // 接收主进程通过 globalShortcut 推送的截屏请求
     ipcRenderer.on('trigger-capture', function(event, mode) {
       console.log('[renderer] trigger-capture mode=' + mode);
-      if (mode === 'area') {
-        doCaptureArea();
-      } else if (mode === 'full') {
-        doCaptureFull();
+      if (mode === 'editor') {
+        doCaptureWithEditor();
       } else {
-        addLog('unknown trigger-capture mode: ' + mode, 'err');
+        addLog('trigger-capture mode "' + mode + '" 已废弃，请使用 Ctrl+Shift+F 截全屏+编辑', 'info');
       }
     });
   </script>

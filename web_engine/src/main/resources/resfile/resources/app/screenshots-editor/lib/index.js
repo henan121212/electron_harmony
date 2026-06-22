@@ -29,10 +29,15 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-/* eslint-disable no-console */
+var debug_1 = __importDefault(require("debug"));
 var electron_1 = require("electron");
 var events_1 = __importDefault(require("events"));
 var window_1 = __importDefault(require("./window"));
+/* eslint-disable global-require */
+if (process.env.DEBUG === 'electron-screenshots') {
+    var remoteMain = require('@electron/remote/main');
+    remoteMain.initialize();
+}
 var Screenshots = /** @class */ (function (_super) {
     __extends(Screenshots, _super);
     function Screenshots(opts) {
@@ -43,7 +48,7 @@ var Screenshots = /** @class */ (function (_super) {
         _this.windowCreateFlag = false;
         _this.selected = false;
         _this.startCapture = function () {
-            console.log('[Screenshots] startCapture');
+            _this.logger('startCapture');
             _this.getDisplayWithMousePoint();
             var displays = electron_1.screen.getAllDisplays();
             var windows = displays.map(function (monitor) {
@@ -55,31 +60,31 @@ var Screenshots = /** @class */ (function (_super) {
                     height: Math.floor(monitor.bounds.height),
                     scaleFactor: monitor.scaleFactor,
                 };
-                var win = _this.store.get(monitor.id);
-                if (!win) {
-                    win = new window_1.default(__assign(__assign({}, _this.opts), { display: display }));
+                var window = _this.store.get(monitor.id);
+                if (!window) {
+                    window = new window_1.default(__assign(__assign({}, _this.opts), { display: display }));
                 }
                 else {
-                    win.updateDisplay(display);
+                    window.updateDisplay(display);
                 }
-                win.once('ok', _this.onOk);
-                win.once('cancel', _this.onCancel);
-                win.once('save', _this.onSave);
-                win.once('afterSave', _this.onAfterSave);
-                win.once('windowCreated', _this.onWindowCreated);
-                win.once('windowClosed', _this.onWindowClosed);
-                win.once('selected', _this.onSelected);
-                _this.store.set(monitor.id, win);
-                return win;
+                window.once('ok', _this.onOk);
+                window.once('cancel', _this.onCancel);
+                window.once('save', _this.onSave);
+                window.once('afterSave', _this.onAfterSave);
+                window.once('windowCreated', _this.onWindowCreated);
+                window.once('windowClosed', _this.onWindowClosed);
+                window.once('selected', _this.onSelected);
+                _this.store.set(monitor.id, window);
+                return window;
             });
-            windows.forEach(function (win) {
-                win.startCapture();
+            windows.forEach(function (window) {
+                window.startCapture();
             });
         };
         _this.endCapture = function () {
-            console.log('[Screenshots] endCapture');
-            _this.store.forEach(function (win) {
-                win.endCapture();
+            _this.logger('endCapture');
+            _this.store.forEach(function (window) {
+                window.endCapture();
             });
             _this.reset();
         };
@@ -104,15 +109,16 @@ var Screenshots = /** @class */ (function (_super) {
         _this.updateWindowEnabled = function () {
             var _a = _this.getDisplayInfo(), currentWindow = _a.currentWindow, extraWindows = _a.extraWindows;
             currentWindow === null || currentWindow === void 0 ? void 0 : currentWindow.sendEvent('setEnabled', true);
-            extraWindows.forEach(function (win) {
-                win.sendEvent('setEnabled', false);
+            extraWindows.forEach(function (window) {
+                window.sendEvent('setEnabled', false);
             });
         };
         _this.notifyExtraWindowExit = function () {
+            // 这里延迟，防止 mac 不能退出 Kiosk，但还是有概率无法退出
             var _a = _this.getDisplayInfo(), currentWindow = _a.currentWindow, extraWindows = _a.extraWindows;
             setTimeout(function () {
                 currentWindow === null || currentWindow === void 0 ? void 0 : currentWindow.endCapture();
-                extraWindows.forEach(function (win) { return win.endCapture(); });
+                extraWindows.forEach(function (window) { return window.endCapture(); });
             }, 75);
         };
         _this.onOk = function (e, buffer, bounds) {
@@ -149,19 +155,19 @@ var Screenshots = /** @class */ (function (_super) {
             _this.updateWindowEnabled();
         };
         _this.opts = opts;
-        console.log('[Screenshots] constructor');
+        _this.logger = (opts === null || opts === void 0 ? void 0 : opts.logger) || (0, debug_1.default)('electron-screenshots');
         return _this;
     }
     Screenshots.prototype.getDisplayInfo = function () {
         var _this = this;
         var windows = [];
         var currentWindow;
-        this.store.forEach(function (win, displayId) {
+        this.store.forEach(function (window, displayId) {
             if (displayId === _this.currentDisplayId) {
-                currentWindow = win;
+                currentWindow = window;
             }
             else {
-                windows.push(win);
+                windows.push(window);
             }
         });
         return {

@@ -1,6 +1,8 @@
+import { Debugger } from 'debug';
 import { Bounds } from './preload';
 import { Display } from './helper/getDisplay';
 export type LoggerFn = (...args: unknown[]) => void;
+export type Logger = Debugger | LoggerFn;
 export interface Lang {
     magnifier_position_label?: string;
     operation_ok_title?: string;
@@ -18,8 +20,7 @@ export interface Lang {
 export interface ScreenshotsOpts {
     display?: Display;
     lang?: Lang;
-    logger?: LoggerFn;
+    logger?: Logger;
     singleWindow?: boolean;
-    editorHtmlPath?: string;
 }
 export { Bounds };

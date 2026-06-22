@@ -1,19 +1,15 @@
 /// <reference types="node" />
 import Events from 'events';
-import { Display } from './helper/getDisplay';
+import { ScreenshotsOpts } from './types';
 export default class Screenshots extends Events {
+    private logger;
     private store;
     private opts?;
     private timer;
     private currentDisplayId;
     private windowCreateFlag;
     private selected;
-    constructor(opts?: {
-        display?: Display;
-        singleWindow?: boolean;
-        lang?: any;
-        editorHtmlPath?: string;
-    });
+    constructor(opts?: ScreenshotsOpts);
     startCapture: () => void;
     endCapture: () => void;
     private reset;

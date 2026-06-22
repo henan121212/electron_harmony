@@ -185,21 +185,15 @@ app.whenReady().then(() => {
     createWindow();
 });
 
-// ===== 截屏快捷键 =====
+// ===== 截屏快捷键（仅截全屏+编辑）=====
 app.whenReady().then(() => {
-    const okA = globalShortcut.register('CommandOrControl+Shift+A', () => {
-        console.log('[main] shortcut Ctrl+Shift+A -> area capture');
-        if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send('trigger-capture', 'area');
-        }
-    });
     const okF = globalShortcut.register('CommandOrControl+Shift+F', () => {
-        console.log('[main] shortcut Ctrl+Shift+F -> full capture');
+        console.log('[main] shortcut Ctrl+Shift+F -> capture with editor');
         if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send('trigger-capture', 'full');
+            mainWindow.webContents.send('trigger-capture', 'editor');
         }
     });
-    console.log('[main] globalShortcut register area=' + okA + ' full=' + okF);
+    console.log('[main] globalShortcut register capture+editor=' + okF);
 });
 
 app.on('will-quit', () => {
