@@ -1,0 +1,16 @@
+{
+  "name": "library",
+  "version": "1.0.0",
+  "description": "ETS Bridge library for Electron-OpenHarmony communication",
+  "main": "Index.ets",
+  "author": "",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "libets_bridge_adapter.so": "file:./src/main/cpp/types/libets_bridge",
+    "libbetter_sqlite3": "file:./src/main/cpp/types/libbetter_sqlite3"
+  },
+  "dependencies": {
+    "inversify": "^6.0.1",
+    "reflect-metadata": "^0.1.13"
+  }
+}

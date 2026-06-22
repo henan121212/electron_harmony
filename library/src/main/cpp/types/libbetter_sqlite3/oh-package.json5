@@ -1,0 +1,6 @@
+{
+  "types": "./Index.d.ts",
+  "name": "libbetter_sqlite3",
+  "description": "better-sqlite3 type file for Electron on HarmonyOS",
+  "version": "1.0.0"
+}

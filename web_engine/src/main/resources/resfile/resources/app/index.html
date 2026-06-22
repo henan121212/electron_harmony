@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>ETS Bridge</title>
+  <style>
+    body { background: #0f1419; color: #e6edf3; font-family: sans-serif; font-size: 14px; padding: 24px; }
+    h1 { margin-bottom: 16px; }
+    h2 { margin: 20px 0 10px; font-size: 14px; color: #7d8590; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+    .btn { padding: 8px 16px; margin: 4px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; background: #2f81f7; color: #fff; }
+    .btn-capture { background: #238636; }
+    .btn:disabled { background: #30363d; color: #8b949e; cursor: not-allowed; }
+    #result { margin: 16px 0; font-family: monospace; font-size: 15px; color: #3fb950; min-height: 22px; }
+    .log { background: #0d1117; border: 1px solid #2a3a52; border-radius: 6px; padding: 12px; margin-top: 20px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto; }
+    .log-item { padding: 3px 0; }
+    .log-ok { color: #3fb950; }
+    .log-err { color: #f85149; }
+    .log-info { color: #7d8590; }
+    #captureResult { margin-top: 12px; }
+    #captureImg { max-width: 100%; border: 1px solid #2a3a52; border-radius: 6px; display: none; }
+    .capture-meta { margin-top: 6px; font-size: 12px; color: #7d8590; }
+  </style>
+</head>
+<body>
+  <h1>ETS Bridge</h1>
+  <div id="result"></div>
+  <div class="capture-meta" style="margin-bottom: 8px;">快捷键：<b>Ctrl+Shift+A</b> 区域截图 · <b>Ctrl+Shift+F</b> 全屏截图（窗口会自动隐藏）</div>
+
+  <button class="btn" onclick="doQueryDeviceInfo()">queryDeviceInfo</button>
+  <button class="btn" onclick="doEchoAsync()">echoAsync</button>
+  <button class="btn" onclick="doCallSync()">callSync(旧)</button>
+  <button class="btn" onclick="doCallAsync()">callAsync(旧)</button>
+  <button class="btn" onclick="doGetODID()">getODID</button>
+  <button class="btn" onclick="doSetODIDAttr()">setODIDAttr</button>
+
+  <h2>截屏</h2>
+  <button class="btn btn-capture" id="btnCaptureArea" onclick="doCaptureArea()">区域截图 (area)</button>
+  <button class="btn btn-capture" id="btnCaptureFull" onclick="doCaptureFull()">全屏截图 (full)</button>
+  <button class="btn btn-capture" id="btnCapturePreview" onclick="doCaptureFullWithPreview()">截全屏并预览</button>
+  <button class="btn btn-capture" id="btnCaptureWithEditor" onclick="doCaptureWithEditor()" style="background: #a371f7;">截全屏 + 编辑</button>
+  <div id="captureResult">
+    <img id="captureImg" alt="screenshot preview" />
+    <div id="captureMeta" class="capture-meta"></div>
+  </div>
+
+  <div class="log">
+    <div class="log-item log-info">等待调用...</div>
+  </div>
+
+  <script>
+    var { ipcRenderer } = require('electron');
+
+    var logs = [];
+
+    function showResult(msg) {
+      document.getElementById('result').textContent = msg;
+    }
+
+    function addLog(msg, type) {
+      console.log('[renderer] addLog: ' + msg);
+      logs.unshift({ t: new Date().toLocaleTimeString('zh-CN',{hour12:false}), m: msg, s: type });
+      if (logs.length > 30) logs.pop();
+      var div = document.querySelector('.log');
+      div.innerHTML = logs.map(function(l) {
+        return '<div class="log-item log-' + l.s + '">[' + l.t + '] ' + l.m + '</div>';
+      }).join('');
+    }
+
+    function doQueryDeviceInfo() {
+      console.log('[renderer] doQueryDeviceInfo');
+      addLog('-> queryDeviceInfo', 'info');
+      let params = {
+        queryFields: ['brand', 'model', 'odid'],
+        includeHardware: true,
+        deviceType: 'phone',
+        extra: { timestamp: Date.now() }
+      };
+      ipcRenderer.invoke('ets:callSync', 'queryDeviceInfo', JSON.stringify(params)).then(function(r) {
+        addLog('OK: ' + r, 'ok');
+        showResult(r);
+      }).catch(function(e) {
+        addLog('ERR: ' + e, 'err');
+        showResult(e);
+      });
+    }
+
+    function doEchoAsync() {
+      console.log('[renderer] doEchoAsync');
+      addLog('-> echoAsync', 'info');
+      ipcRenderer.invoke('ets:callAsync', 'echoAsync', 'hello_from_electron').then(function(r) {
+        addLog('OK: ' + r, 'ok');
+        showResult(r);
+      }).catch(function(e) {
+        addLog('ERR: ' + e, 'err');
+        showResult(e);
+      });
+    }
+
+    function doCallSync() {
+      console.log('[renderer] doCallSync');
+      addLog('-> callSync', 'info');
+      ipcRenderer.invoke('ets:callSync', 'getODID', '{}').then(function(r) {
+        addLog('OK: ' + r, 'ok');
+        showResult(r);
+      }).catch(function(e) {
+        addLog('ERR: ' + e, 'err');
+        showResult(e);
+      });
+    }
+
+    function doCallAsync() {
+      console.log('[renderer] doCallAsync');
+      addLog('-> callAsync', 'info');
+      ipcRenderer.invoke('ets:callAsync', 'setODIDAttr', JSON.stringify({ id: 'test-' + Date.now() })).then(function(r) {
+        addLog('OK: ' + r, 'ok');
+        showResult(r);
+      }).catch(function(e) {
+        addLog('ERR: ' + e, 'err');
+        showResult(e);
+      });
+    }
+
+    function doGetODID() {
+      console.log('[renderer] doGetODID');
+      addLog('-> getODID', 'info');
+      ipcRenderer.invoke('ets:getODID').then(function(r) {
+        addLog('OK: ' + r, 'ok');
+        showResult(r);
+      }).catch(function(e) {
+        addLog('ERR: ' + e, 'err');
+        showResult(e);
+      });
+    }
+
+    function doSetODIDAttr() {
+      console.log('[renderer] doSetODIDAttr');
+      addLog('-> setODIDAttr', 'info');
+      ipcRenderer.invoke('ets:setODIDAttr', 'test-' + Date.now()).then(function(r) {
+        addLog('OK: ' + r, 'ok');
+        showResult(r);
+      }).catch(function(e) {
+        addLog('ERR: ' + e, 'err');
+        showResult(e);
+      });
+    }
+
+    function setCaptureButtonsDisabled(disabled) {
+      var ids = ['btnCaptureArea', 'btnCaptureFull', 'btnCapturePreview', 'btnCaptureWithEditor'];
+      ids.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.disabled = disabled;
+      });
+    }
+
+    function showCapture(base64, meta) {
+      var img = document.getElementById('captureImg');
+      var metaEl = document.getElementById('captureMeta');
+      if (base64) {
+        img.src = 'data:image/jpeg;base64,' + base64;
+        img.style.display = 'block';
+        if (metaEl) metaEl.textContent = meta || '';
+      } else {
+        img.removeAttribute('src');
+        img.style.display = 'none';
+        if (metaEl) metaEl.textContent = '';
+      }
+    }
+
+    function doCaptureArea() {
+      console.log('[renderer] doCaptureArea');
+      addLog('-> screenCapture(area)', 'info');
+      showResult('区域截图中... 请在屏幕上框选区域');
+      showCapture(null, '');
+      setCaptureButtonsDisabled(true);
+      ipcRenderer.invoke('ets:callAsync', 'screenCapture', JSON.stringify({ mode: 'area' })).then(function(r) {
+        setCaptureButtonsDisabled(false);
+        console.log('[renderer] doCaptureArea result:', r);
+        var parsed;
+        try { parsed = JSON.parse(r); } catch (e) { parsed = { code: 1, data: '', msg: 'invalid json: ' + r }; }
+        if (parsed.code === 0 && parsed.data) {
+          addLog('OK area capture, base64 len=' + parsed.data.length, 'ok');
+          showResult('区域截图成功');
+          showCapture(parsed.data, '区域截图 jpeg · base64 长度 ' + parsed.data.length);
+        } else {
+          addLog('ERR area capture: ' + (parsed.msg || 'unknown'), 'err');
+          showResult('区域截图失败: ' + (parsed.msg || 'unknown'));
+        }
+      }).catch(function(e) {
+        setCaptureButtonsDisabled(false);
+        addLog('ERR area capture IPC: ' + e, 'err');
+        showResult('区域截图异常: ' + e);
+      });
+    }
+
+    function doCaptureFull() {
+      console.log('[renderer] doCaptureFull');
+      addLog('-> screenCapture(full)', 'info');
+      showResult('全屏截图中...');
+      showCapture(null, '');
+      setCaptureButtonsDisabled(true);
+
+      // 全屏截图前：通知主进程隐藏窗口，避免截到 Electron 自身
+      function runCapture() {
+        ipcRenderer.invoke('ets:callAsync', 'screenCapture', JSON.stringify({ mode: 'full' })).then(function(r) {
+          // 无论成功失败都恢复窗口
+          return ipcRenderer.invoke('capture:restore-window').then(function() { return r; });
+        }).then(function(r) {
+          setCaptureButtonsDisabled(false);
+          console.log('[renderer] doCaptureFull result:', r);
+          var parsed;
+          try { parsed = JSON.parse(r); } catch (e) { parsed = { code: 1, data: '', msg: 'invalid json: ' + r }; }
+          if (parsed.code === 0 && parsed.data) {
+            addLog('OK full capture, base64 len=' + parsed.data.length, 'ok');
+            showResult('全屏截图成功');
+            showCapture(parsed.data, '全屏截图 jpeg · base64 长度 ' + parsed.data.length);
+          } else {
+            addLog('ERR full capture: ' + (parsed.msg || 'unknown'), 'err');
+            showResult('全屏截图失败: ' + (parsed.msg || 'unknown'));
+          }
+        }).catch(function(e) {
+          // 异常也要恢复窗口
+          ipcRenderer.invoke('capture:restore-window').finally(function() {
+            setCaptureButtonsDisabled(false);
+            addLog('ERR full capture IPC: ' + e, 'err');
+            showResult('全屏截图异常: ' + e);
+          });
+        });
+      }
+
+      ipcRenderer.invoke('capture:full-with-hide').then(function(hideRes) {
+        if (hideRes && hideRes.ok) {
+          addLog('window hidden for full capture', 'info');
+          runCapture();
+        } else {
+          addLog('hide window failed (' + (hideRes && hideRes.reason) + '), capture without hide', 'err');
+          runCapture();
+        }
+      }).catch(function(e) {
+        addLog('hide IPC ERR: ' + e + ', capture without hide', 'err');
+        runCapture();
+      });
+    }
+
+    // 截全屏 + 新建无边框全屏窗口预览
+    function doCaptureFullWithPreview() {
+      console.log('[renderer] doCaptureFullWithPreview');
+      addLog('-> screenCapture(full) + preview window', 'info');
+      showResult('全屏截图中（用于预览）...');
+      setCaptureButtonsDisabled(true);
+
+      function afterCapture(parsed) {
+        return ipcRenderer.invoke('capture:restore-window').then(function() { return parsed; });
+      }
+
+      function openPreview(parsed) {
+        return ipcRenderer.invoke('capture:show-fullscreen', {
+          data: parsed.data,
+          rect: { left: 0, top: 0, width: 0, height: 0 }
+        });
+      }
+
+      ipcRenderer.invoke('capture:full-with-hide')
+        .then(function(hideRes) {
+          if (hideRes && hideRes.ok) {
+            addLog('window hidden for full+preview capture', 'info');
+          } else {
+            addLog('hide window failed (' + (hideRes && hideRes.reason) + '), capture without hide', 'err');
+          }
+          return ipcRenderer.invoke('ets:callAsync', 'screenCapture', JSON.stringify({ mode: 'full' }));
+        })
+        .then(function(r) {
+          return afterCapture(JSON.parse(r)).then(function(parsed) { return { parsed: parsed, raw: r }; });
+        })
+        .then(function(state) {
+          setCaptureButtonsDisabled(false);
+          var parsed = state.parsed;
+          if (!parsed || parsed.code !== 0 || !parsed.data) {
+            addLog('ERR full+preview capture: ' + (parsed && parsed.msg || 'unknown'), 'err');
+            showResult('全屏预览截图失败: ' + (parsed && parsed.msg || 'unknown'));
+            return null;
+          }
+          // 同时在原页面也显示一张
+          showCapture(parsed.data, '全屏截图 jpeg · base64 长度 ' + parsed.data.length);
+          addLog('OK full+preview capture, opening preview window', 'ok');
+          return openPreview(parsed);
+        })
+        .then(function(showRes) {
+          if (showRes) {
+            if (showRes.ok) {
+              showResult('全屏截图成功，预览窗口已打开');
+            } else {
+              addLog('ERR open preview window: ' + (showRes.reason || 'unknown'), 'err');
+              showResult('预览窗口打开失败: ' + (showRes.reason || 'unknown'));
+            }
+          }
+        })
+        .catch(function(e) {
+          ipcRenderer.invoke('capture:restore-window').finally(function() {
+            setCaptureButtonsDisabled(false);
+            addLog('ERR full+preview capture: ' + e, 'err');
+            showResult('全屏预览截图异常: ' + e);
+          });
+        });
+    }
+
+    // 截全屏 + 打开编辑窗口
+    function doCaptureWithEditor() {
+      console.log('[renderer] doCaptureWithEditor');
+      addLog('-> capture:withEditor (截图+编辑)', 'info');
+      showResult('截图中，请稍候...');
+      setCaptureButtonsDisabled(true);
+
+      ipcRenderer.invoke('capture:withEditor').then(function(res) {
+        setCaptureButtonsDisabled(false);
+        console.log('[renderer] doCaptureWithEditor result:', res);
+        if (res && res.ok) {
+          addLog('OK 编辑窗口已打开', 'ok');
+          showResult('编辑窗口已打开');
+        } else {
+          addLog('ERR: ' + (res && res.reason || 'unknown'), 'err');
+          showResult('失败: ' + (res && res.reason || 'unknown'));
+        }
+      }).catch(function(e) {
+        setCaptureButtonsDisabled(false);
+        addLog('ERR: ' + e, 'err');
+        showResult('异常: ' + e);
+      });
+    }
+
+    // 接收主进程通过 globalShortcut 推送的截屏请求
+    ipcRenderer.on('trigger-capture', function(event, mode) {
+      console.log('[renderer] trigger-capture mode=' + mode);
+      if (mode === 'area') {
+        doCaptureArea();
+      } else if (mode === 'full') {
+        doCaptureFull();
+      } else {
+        addLog('unknown trigger-capture mode: ' + mode, 'err');
+      }
+    });
+  </script>
+</body>
+</html>

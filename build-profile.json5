@@ -1,0 +1,63 @@
+{
+  "app": {
+    "products": [
+      {
+        "name": "default",
+        "signingConfig": "default",
+        "compatibleSdkVersion": "5.0.5(17)",
+        "compatibleSdkVersionStage": "release",
+        "runtimeOS": "HarmonyOS",
+        "buildOption": {
+          "nativeLib": {
+            "collectAllLibs": true
+          }
+        }
+      }
+    ],
+    "buildModeSet": [
+      {
+        "name": "debug"
+      },
+      {
+        "name": "release"
+      }
+    ],
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "/Users/henan/.ohos/config/default_ohos_hap_HAHbuqvez-YV_5p8TpvGiEdDDG0Rvb2UeUG1Cc4VVgs=.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001BCB359947CA2A93BB720CDAA899E85244B1FDD9541E8B92FAA69F6D107047D476E3F5F0719686FA",
+          "profile": "/Users/henan/.ohos/config/default_ohos_hap_HAHbuqvez-YV_5p8TpvGiEdDDG0Rvb2UeUG1Cc4VVgs=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "/Users/henan/.ohos/config/default_ohos_hap_HAHbuqvez-YV_5p8TpvGiEdDDG0Rvb2UeUG1Cc4VVgs=.p12",
+          "storePassword": "0000001B91C67AAD63586A865EFF1D0982512060F99DC7FDB2BCE82E2FD2C88FCC822FE5DC2271437D1AB9"
+        }
+      }
+    ]
+  },
+  "modules": [
+    {
+      "name": "electron",
+      "srcPath": "./electron",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "web_engine",
+      "srcPath": "./web_engine"
+    },
+    {
+      "name": "library",
+      "srcPath": "./library"
+    }
+  ]
+}

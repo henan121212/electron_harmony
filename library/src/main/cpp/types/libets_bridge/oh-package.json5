@@ -1,0 +1,6 @@
+{
+  "types": "./Index.d.ts",
+  "name": "libets_bridge_adapter.so",
+  "description": "ETS Bridge Adapter type file",
+  "version": ""
+}

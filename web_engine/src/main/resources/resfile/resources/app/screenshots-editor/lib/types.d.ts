@@ -1,0 +1,25 @@
+import { Bounds } from './preload';
+import { Display } from './helper/getDisplay';
+export type LoggerFn = (...args: unknown[]) => void;
+export interface Lang {
+    magnifier_position_label?: string;
+    operation_ok_title?: string;
+    operation_cancel_title?: string;
+    operation_save_title?: string;
+    operation_redo_title?: string;
+    operation_undo_title?: string;
+    operation_mosaic_title?: string;
+    operation_text_title?: string;
+    operation_brush_title?: string;
+    operation_arrow_title?: string;
+    operation_ellipse_title?: string;
+    operation_rectangle_title?: string;
+}
+export interface ScreenshotsOpts {
+    display?: Display;
+    lang?: Lang;
+    logger?: LoggerFn;
+    singleWindow?: boolean;
+    editorHtmlPath?: string;
+}
+export { Bounds };

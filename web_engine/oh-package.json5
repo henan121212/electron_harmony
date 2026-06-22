@@ -1,0 +1,14 @@
+{
+  "name": "web_engine",
+  "version": "1.0.0",
+  "description": "Please describe the basic information.",
+  "main": "Index.ets",
+  "author": "",
+  "license": "Apache-2.0",
+  "devDependencies": {},
+  "dependencies": {
+    "library": "file:../library",
+    "inversify": "^6.0.1",
+    "reflect-metadata": "^0.1.13"
+  }
+}
