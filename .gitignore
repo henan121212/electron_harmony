@@ -23,4 +23,5 @@
 /web_engine/src/main/resources/rawfile
 /dependencies
 /test.log
-/.DS_Storeweb_engine/src/main/resources/resfile/resources/app/node_modules
+/.DS_Store
+web_engine/src/main/resources/resfile/resources/app/node_modules
