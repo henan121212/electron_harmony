@@ -41,15 +41,23 @@ export class JSBindingEts {
       if (splitMode.length >= 2) {
         displayId = Number.parseInt(splitMode[1]) ?? 0;
       }
+      hilog.info(0x0000, TAG, 'screenCapture: mode=%{public}s, displayId=%{public}d', mode, displayId);
       screenshot.capture({displayId: displayId}).then((pixelMap) => {
         const imagePackerObj: image.ImagePacker = image.createImagePacker();
         // ArkTS 端 image.PackingOption 的 quality 字段是必填的；png 用 100 表示无损压缩
         let packOpts: image.PackingOption = wantPng
           ? { format: "image/png", quality: 100 }
           : { format: "image/jpeg", quality: 98 };
+        // 获取 PixelMap 的实际尺寸
+        let imageInfo: image.ImageInfo = pixelMap.getImageInfoSync();
+        let rectMap = new Map<string, number>();
+        rectMap.set('left', 0);
+        rectMap.set('top', 0);
+        rectMap.set('width', imageInfo.size.width);
+        rectMap.set('height', imageInfo.size.height);
+        hilog.info(0x0000, TAG, 'screenCapture: pixelMap size=%{public}d x %{public}d', imageInfo.size.width, imageInfo.size.height);
         imagePackerObj.packToData(pixelMap, packOpts).then((data: ArrayBuffer) => {
           try {
-            let rectMap = JSBindingEts.parseRectMap(displayId);
             let akiPickInfo: screenAdapter.AkiPickInfo = new screenAdapter.AkiPickInfo(data, rectMap);
             callback(akiPickInfo);
           } catch(err) {

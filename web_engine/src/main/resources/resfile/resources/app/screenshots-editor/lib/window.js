@@ -340,6 +340,7 @@ var Window = /** @class */ (function (_super) {
     Window.prototype.capture = function (display) {
         return __awaiter(this, void 0, void 0, function () {
             var result, parsed, err_1, NodeScreenshots, capturer, image, err_2, sourcesOptions, sources, source;
+            var _this = this;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -348,8 +349,12 @@ var Window = /** @class */ (function (_super) {
                         _a.label = 1;
                     case 1:
                         _a.trys.push([1, 3, , 4]);
-                        this.logger("SCREENSHOTS:".concat(this.winId, ":capture using etsBridge"));
-                        return [4 /*yield*/, etsBridge.callAsync('screenCapture', JSON.stringify({ mode: 'full_png' }))];
+                        this.logger("SCREENSHOTS:".concat(this.winId, ":capture using etsBridge, display:"), JSON.stringify({id: display.id, x: display.x, y: display.y, width: display.width, height: display.height}));
+                        // 使用 display.id 来截取对应屏幕的截图
+                        // mode 格式: "full_{displayId}_png" 或 "full_0_png" (默认)
+                        var captureMode = "full_".concat(display.id, "_png");
+                        this.logger("SCREENSHOTS:".concat(this.winId, ":capture mode:"), captureMode);
+                        return [4 /*yield*/, etsBridge.callAsync('screenCapture', JSON.stringify({ mode: captureMode }))];
                     case 2:
                         result = _a.sent();
                         parsed = JSON.parse(result);
