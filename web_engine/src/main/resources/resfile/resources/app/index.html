@@ -38,6 +38,11 @@
   <button class="btn btn-capture" id="btnCaptureFull" onclick="doCaptureFull()">全屏截图 (full)</button>
   <button class="btn btn-capture" id="btnCapturePreview" onclick="doCaptureFullWithPreview()">截全屏并预览</button>
   <button class="btn btn-capture" id="btnCaptureWithEditor" onclick="doCaptureWithEditor()" style="background: #a371f7;">截全屏 + 编辑</button>
+
+  <h2>测试：多屏窗口</h2>
+  <button class="btn" id="btnMultiDisplay" onclick="doTestMultiDisplay()" style="background: #f0883e;">鸿蒙API创建多屏窗口</button>
+  <button class="btn" id="btnTestDualScreen" onclick="doTestMultiDisplayElectron()" style="background: #e04e39;">Electron API创建多屏窗口</button>
+
   <div id="captureResult">
     <img id="captureImg" alt="screenshot preview" />
     <div id="captureMeta" class="capture-meta"></div>
@@ -322,6 +327,48 @@
         }
       }).catch(function(e) {
         setCaptureButtonsDisabled(false);
+        addLog('ERR: ' + e, 'err');
+        showResult('异常: ' + e);
+      });
+    }
+
+    // 测试多屏全屏窗口 - 鸿蒙获取屏幕信息
+    function doTestMultiDisplay() {
+      console.log('[renderer] doTestMultiDisplay (HarmonyOS)');
+      addLog('-> testMultiDisplay (鸿蒙API获取屏幕信息)', 'info');
+      showResult('正在通过鸿蒙API获取屏幕信息...');
+
+      ipcRenderer.invoke('capture:test-multi-display').then(function(res) {
+        console.log('[renderer] testMultiDisplay result:', res);
+        if (res && res.ok) {
+          addLog('OK 鸿蒙API创建 ' + res.count + ' 个窗口 (source: ' + res.source + ')', 'ok');
+          showResult('成功通过鸿蒙API打开 ' + res.count + ' 个全屏窗口');
+        } else {
+          addLog('ERR: ' + (res && res.reason || 'unknown'), 'err');
+          showResult('失败: ' + (res && res.reason || 'unknown'));
+        }
+      }).catch(function(e) {
+        addLog('ERR: ' + e, 'err');
+        showResult('异常: ' + e);
+      });
+    }
+
+    // 测试多屏全屏窗口 - Electron获取屏幕信息
+    function doTestMultiDisplayElectron() {
+      console.log('[renderer] doTestMultiDisplayElectron (Electron)');
+      addLog('-> testMultiDisplayElectron (Electron API获取屏幕信息)', 'info');
+      showResult('正在通过Electron API获取屏幕信息...');
+
+      ipcRenderer.invoke('capture:test-multi-display-electron').then(function(res) {
+        console.log('[renderer] testMultiDisplayElectron result:', res);
+        if (res && res.ok) {
+          addLog('OK Electron API创建 ' + res.count + ' 个窗口 (source: ' + res.source + ')', 'ok');
+          showResult('成功通过Electron API打开 ' + res.count + ' 个全屏窗口');
+        } else {
+          addLog('ERR: ' + (res && res.reason || 'unknown'), 'err');
+          showResult('失败: ' + (res && res.reason || 'unknown'));
+        }
+      }).catch(function(e) {
         addLog('ERR: ' + e, 'err');
         showResult('异常: ' + e);
       });

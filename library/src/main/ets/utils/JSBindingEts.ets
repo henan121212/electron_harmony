@@ -95,6 +95,38 @@ export class JSBindingEts {
       JSBindingEts.currentContext = screenAdapter.getNativeContext();
     }
     JSBindingEts.currentContext.JSBind.bindFunction('screenCapture', JSBindingEts.screenCapture);
+    JSBindingEts.currentContext.JSBind.bindFunction('getAllDisplaysInfo', JSBindingEts.getAllDisplaysInfo);
+  }
+
+  static getAllDisplaysInfo(callback: Function) {
+    hilog.info(0x0000, TAG, 'getAllDisplaysInfo: start');
+    try {
+      display.getAllDisplays((err: BusinessError, data: Array<display.Display>) => {
+        if (err.code !== 0) {
+          let errMsg = err.message ?? JSON.stringify(err);
+          hilog.error(0x0000, TAG, 'getAllDisplaysInfo failed: code=%{public}d, msg=%{public}s', err.code, errMsg);
+          callback({code: err.code, data: '[]'});
+          return;
+        }
+        let result: Array<Record<string, number>> = data.map(d => {
+          let item: Record<string, number> = {
+            'id': d.id,
+            'x': d.x ?? 0,
+            'y': d.y ?? 0,
+            'width': d.width ?? 0,
+            'height': d.height ?? 0,
+            'scale': (d as display.Display).densityPixels ?? 1.0
+          };
+          hilog.info(0x0000, TAG, `getAllDisplaysInfo: display id=${d.id}, physical=(${d.x ?? 0},${d.y ?? 0},${d.width},${d.height}), densityPixels=${item.scale}`);
+          return item;
+        });
+        hilog.info(0x0000, TAG, 'getAllDisplaysInfo: count=%{public}d', result.length);
+        callback({code: 0, data: JSON.stringify(result)});
+      });
+    } catch (e) {
+      hilog.error(0x0000, TAG, 'getAllDisplaysInfo exception: %{public}s', JSON.stringify(e));
+      callback({code: -1, data: '[]'});
+    }
   }
 
   static getNativeContext(): NativeContext {

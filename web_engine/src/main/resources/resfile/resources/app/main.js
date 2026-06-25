@@ -61,6 +61,7 @@ let mainWindow, tray;
 let editorWindow = null; // 截图编辑窗口
 
 function createWindow() {
+    console.log('[main] createWindow called');
     tray = new Tray(nativeImage.createFromPath(path.join(__dirname, 'electron_white.png')));
     mainWindow = new BrowserWindow({
         width: 800,
@@ -70,8 +71,15 @@ function createWindow() {
             nodeIntegration: true
         }
     });
+    console.log('[main] mainWindow created, id:', mainWindow.id, 'isDestroyed:', mainWindow.isDestroyed());
     mainWindow.setWindowButtonVisibility(true);
     mainWindow.loadFile('index.html');
+    
+    // 追踪 mainWindow 销毁事件
+    mainWindow.on('closed', () => {
+        console.log('[main] mainWindow CLOSED event fired!');
+        mainWindow = null;
+    });
 }
 
 // ===== 截图编辑窗口 =====
@@ -159,17 +167,35 @@ app.whenReady().then(() => {
         
         screenshotsInstance.on('ok', (e, buffer, bounds) => {
             console.log('[main] screenshots ok, bounds:', bounds);
+            // 恢复主窗口
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                console.log('[main] screenshots ok - showing mainWindow');
+                mainWindow.show();
+                mainWindow.focus();
+            } else {
+                console.log('[main] screenshots ok - mainWindow is destroyed or null!');
+            }
         });
         
         screenshotsInstance.on('cancel', () => {
             console.log('[main] screenshots cancel');
             if (mainWindow && !mainWindow.isDestroyed()) {
+                console.log('[main] screenshots cancel - showing mainWindow');
                 mainWindow.show();
+                mainWindow.focus();
+            } else {
+                console.log('[main] screenshots cancel - mainWindow is destroyed or null!');
             }
         });
         
         screenshotsInstance.on('save', (e, buffer, bounds) => {
             console.log('[main] screenshots save, bounds:', bounds);
+            // 恢复主窗口
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                console.log('[main] screenshots save - showing mainWindow');
+                mainWindow.show();
+                mainWindow.focus();
+            }
         });
         
         screenshotsInstance.on('windowCreated', () => {
@@ -315,6 +341,230 @@ ipcMain.handle('capture:withEditor', async (event, payload) => {
         return { ok: false, reason: String(e) };
     }
 });
+
+// ===== 测试多屏全屏窗口 - 鸿蒙获取屏幕信息 =====
+// 调用鸿蒙 getAllDisplaysInfo API，在每个屏幕上打开一个全屏窗口
+ipcMain.handle('capture:test-multi-display', async (event, payload) => {
+    console.log('[main] capture:test-multi-display (HarmonyOS)');
+    try {
+        // 通过 etsBridge 获取所有屏幕信息（鸿蒙API）
+        const result = await etsBridge.callAsync('getAllDisplaysInfo', '{}');
+        console.log('[main] HarmonyOS getAllDisplaysInfo result:', result);
+        
+        let parsed;
+        try {
+            parsed = JSON.parse(result);
+        } catch (e) {
+            console.error('[main] parse getAllDisplaysInfo result failed:', e);
+            return { ok: false, reason: 'invalid json from getAllDisplaysInfo' };
+        }
+        
+        // 支持两种返回格式：1) {code: 0, data: "[{...}]"}  2) [{...}]
+        let displays;
+        if (Array.isArray(parsed)) {
+            displays = parsed;
+        } else if (parsed.code === 0 && parsed.data) {
+            try {
+                displays = JSON.parse(parsed.data);
+            } catch (e) {
+                console.error('[main] parse displays data failed:', e);
+                return { ok: false, reason: 'invalid displays json' };
+            }
+        } else {
+            return { ok: false, reason: 'getAllDisplaysInfo failed: ' + JSON.stringify(parsed) };
+        }
+        
+        console.log('[main] HarmonyOS displays count:', displays.length);
+        console.log('[main] HarmonyOS displays (physical):', JSON.stringify(displays));
+        
+        // HarmonyOS getAllDisplaysInfo 返回物理像素，BrowserWindow 需要逻辑像素
+        // 需要用 densityPixels (scale) 转换
+        const logicalDisplays = displays.map(d => {
+            const scale = d.scale || 1;
+            return {
+                id: d.id,
+                x: Math.round(d.x / scale),
+                y: Math.round(d.y / scale),
+                width: Math.round(d.width / scale),
+                height: Math.round(d.height / scale),
+                scale: scale,
+                scaleFactor: scale,
+                internal: d.internal,
+                label: d.label
+            };
+        });
+        
+        console.log('[main] HarmonyOS displays (logical):', JSON.stringify(logicalDisplays));
+        
+        return createMultiDisplayWindows(logicalDisplays, 'HarmonyOS');
+    } catch (e) {
+        console.error('[main] capture:test-multi-display ERR:', e);
+        return { ok: false, reason: String(e) };
+    }
+});
+
+// ===== 测试多屏全屏窗口 - Electron获取屏幕信息 =====
+// 调用 Electron screen.getAllDisplays() API，在每个屏幕上打开一个全屏窗口
+ipcMain.handle('capture:test-multi-display-electron', async (event, payload) => {
+    console.log('[main] capture:test-multi-display-electron (Electron)');
+    try {
+        const { screen } = require('electron');
+        const electronDisplays = screen.getAllDisplays();
+        
+        console.log('[main] Electron screen.getAllDisplays() count:', electronDisplays.length);
+        console.log('[main] Electron displays:', JSON.stringify(electronDisplays));
+        
+        // BrowserWindow 在 HarmonyOS 上使用逻辑像素，不做物理转换
+        const displays = electronDisplays.map((d, index) => {
+            const scale = d.scaleFactor || 1;
+            const logicalWidth = Math.round(d.bounds?.width || d.size?.width || d.width || 0);
+            const logicalHeight = Math.round(d.bounds?.height || d.size?.height || d.height || 0);
+
+            console.log('[main] Electron display', index, ': logical=', logicalWidth, 'x', logicalHeight,
+                        ', scale=', scale);
+
+            return {
+                id: d.id,
+                x: Math.floor(d.bounds?.x ?? d.x ?? 0),
+                y: Math.floor(d.bounds?.y ?? d.y ?? 0),
+                width: logicalWidth,
+                height: logicalHeight,
+                scale,
+                scaleFactor: scale,
+                internal: d.internal,
+                label: d.label
+            };
+        });
+        
+        console.log('[main] Converted physical displays:', JSON.stringify(displays));
+        
+        return createMultiDisplayWindows(displays, 'Electron');
+    } catch (e) {
+        console.error('[main] capture:test-multi-display-electron ERR:', e);
+        return { ok: false, reason: String(e) };
+    }
+});
+
+// ===== 通用：创建多屏窗口 =====
+// displays: 屏幕信息数组
+// source: 'HarmonyOS' | 'Electron' - 用于日志标识
+function createMultiDisplayWindows(displays, source) {
+    console.log('[main] Creating', displays.length, 'windows from', source);
+    
+    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD'];
+    
+    for (let i = 0; i < displays.length; i++) {
+        const display = displays[i];
+        const bgColor = colors[i % colors.length];
+        
+        console.log('[main] Creating window', i, 'on display:', JSON.stringify(display));
+        
+        // 构建显示信息
+        const htmlContent = `
+            <html>
+            <head>
+                <style>
+                    * { box-sizing: border-box; margin: 0; padding: 0; }
+                    html, body {
+                        width: 100%;
+                        height: 100%;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        background: #1a1a2e;
+                    }
+                    img {
+                        max-width: 100%;
+                        max-height: 100%;
+                        object-fit: contain;
+                    }
+                    .debug {
+                        position: fixed;
+                        top: 10px;
+                        left: 10px;
+                        background: rgba(0,0,0,0.7);
+                        color: white;
+                        padding: 10px;
+                        font-size: 14px;
+                        font-family: monospace;
+                        border-radius: 5px;
+                    }
+                </style>
+            </head>
+            <body>
+                <img src="https://fuss10.elemecdn.com/a/3f/3302e58f9a181d2509f3dc0fa68b0jpeg.jpeg" alt="Test Image" />
+                <div class="debug">
+                    Display ${display.id}<br/>
+                    Size: ${display.width}x${display.height}<br/>
+                    Position: (${display.x}, ${display.y})
+                </div>
+            </body>
+            </html>
+        `;
+        
+        // 对于扩展屏 (x > 0)，需要使用 setPosition 到正确位置
+        // 而不是依赖 BrowserWindow 的 x 参数（会被误解为相对于屏幕本地的坐标）
+        const winOpts = {
+            x: 0,  // 先设为 0，后面用 setPosition 设置正确位置
+            y: 0,
+            width: display.width,
+            height: display.height,
+            frame: false,
+            transparent: false,
+            fullscreen: false,  // 不用 fullscreen，后面手动设置大小和位置
+            fullscreenable: false,
+            alwaysOnTop: false,
+            skipTaskbar: false,
+            resizable: false,
+            movable: false,
+            minimizable: true,
+            maximizable: false,
+            focusable: true,
+            backgroundColor: bgColor,
+            show: true,
+            title: 'Multi-Display Test - Screen ' + (i + 1) + ' [' + source + ']',
+            webPreferences: {
+                contextIsolation: false,
+                nodeIntegration: true
+            }
+        };
+        
+        // 如果有 displayId 或 display_id，添加这个选项（鸿蒙适配）
+        if (display.id !== undefined) {
+            winOpts.displayId = display.id;
+        }
+        
+        console.log('[main] Creating window opts:', JSON.stringify({
+            x: winOpts.x,
+            y: winOpts.y,
+            width: winOpts.width,
+            height: winOpts.height,
+            displayId: winOpts.displayId,
+            targetX: display.x,
+            scale: display.scale
+        }));
+        
+        const testWin = new BrowserWindow(winOpts);
+        
+        testWin.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(htmlContent));
+        
+        // 等待窗口准备好后再设置大小和位置
+        testWin.once('ready-to-show', () => {
+            console.log('[main] Window ready-to-show, setting bounds for display', display.id);
+            
+            // 设置窗口大小为全屏
+            testWin.setSize(display.width, display.height);
+            
+            // 当设置了 displayId 时，坐标是屏幕本地坐标，统一使用 (0, 0)
+            // 这样窗口会正好填满目标屏幕
+            testWin.setPosition(0, 0);
+        });
+        
+        console.log('[main] Window created for display', display.id, 'from', source, 'at x=' + display.x + ' y=' + display.y);
+    }
+    
+    return { ok: true, count: displays.length, source: source };
+}
 
 // ===== 编辑窗口 IPC 处理器 =====
 // 编辑窗口使用 BrowserView 模式，通过 SCREENSHOTS:{id}:* 事件通信
