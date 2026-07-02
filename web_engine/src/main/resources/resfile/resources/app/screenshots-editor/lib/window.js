@@ -14,6 +14,17 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -81,23 +92,11 @@ var debug_1 = __importDefault(require("debug"));
 var electron_1 = require("electron");
 var events_1 = __importDefault(require("events"));
 var fs_extra_1 = __importDefault(require("fs-extra"));
-var path_1 = __importDefault(require("path"));
 var event_1 = __importDefault(require("./helper/event"));
 var getDisplay_1 = __importDefault(require("./helper/getDisplay"));
 var padStart_1 = __importDefault(require("./helper/padStart"));
+var harmony_1 = require("./helper/harmony");
 var remoteMain = require('@electron/remote/main');
-// ===== etsBridge 截图支持（鸿蒙平台）=====
-var etsBridge = null;
-try {
-    // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
-    etsBridge = require('ets_bridge_addon.node');
-    // eslint-disable-next-line no-console
-    console.log('[window.ts] etsBridge loaded:', Object.keys(etsBridge));
-}
-catch (e) {
-    // eslint-disable-next-line no-console
-    console.log('[window.ts] etsBridge not available');
-}
 var Window = /** @class */ (function (_super) {
     __extends(Window, _super);
     function Window(opts) {
@@ -121,7 +120,9 @@ var Window = /** @class */ (function (_super) {
         _this.logger = (opts === null || opts === void 0 ? void 0 : opts.logger) || (0, debug_1.default)('electron-screenshots');
         _this.singleWindow = (opts === null || opts === void 0 ? void 0 : opts.singleWindow) || false;
         _this.listenIpc();
-        _this.$view.webContents.loadURL("file://".concat(path_1.default.join(__dirname, '../electron/electron.html')));
+        _this.$view.webContents.loadURL(harmony_1.isHarmonyOS
+            ? ("file://".concat(__dirname, "/../electron/electron.html"))
+            : "file://".concat(require.resolve('@qt/react-screenshots/electron/electron.html')));
         if (opts === null || opts === void 0 ? void 0 : opts.lang) {
             _this.setLang(opts.lang);
         }
@@ -149,12 +150,12 @@ var Window = /** @class */ (function (_super) {
                     case 0:
                         this.logger("startCapture:".concat(this.winId));
                         display = this.display || (0, getDisplay_1.default)();
-                        return [4 /*yield*/, Promise.all([this.capture(display), this.isReady])];
+                        return [4 /*yield*/, Promise.all([
+                                this.capture(display),
+                                this.createWindow(display),
+                            ])];
                     case 1:
                         imageUrl = (_a.sent())[0];
-                        return [4 /*yield*/, this.createWindow(display)];
-                    case 2:
-                        _a.sent();
                         this.$view.webContents.send("SCREENSHOTS:".concat(this.winId, ":capture"), display, imageUrl);
                         return [2 /*return*/];
                 }
@@ -264,43 +265,20 @@ var Window = /** @class */ (function (_super) {
                                 linux: undefined,
                                 win32: 'toolbar',
                             };
-                            this.$win = new electron_1.BrowserWindow({
-                                title: 'screenshots',
-                                x: display.x,
-                                y: display.y,
-                                width: display.width,
-                                height: display.height,
-                                useContentSize: true,
-                                type: windowTypes[process.platform],
-                                frame: false,
-                                show: false,
-                                autoHideMenuBar: true,
-                                transparent: true,
-                                resizable: false,
-                                movable: false,
-                                minimizable: false,
-                                maximizable: false,
+                            this.$win = new electron_1.BrowserWindow(__assign({ title: 'screenshots', x: display.x, y: display.y, width: display.width, height: display.height, useContentSize: true, type: windowTypes[process.platform], frame: false, show: false, autoHideMenuBar: true, transparent: true, resizable: false, movable: false, minimizable: false, maximizable: false, 
                                 // focusable 必须设置为 true, 否则窗口不能及时响应esc按键，输入框也不能输入
-                                focusable: true,
-                                skipTaskbar: true,
-                                alwaysOnTop: true,
+                                focusable: true, skipTaskbar: true, alwaysOnTop: true, 
                                 /**
                                  * linux 下必须设置为false，否则不能全屏显示在最上层
                                  * mac 下设置为false，否则可能会导致程序坞不恢复问题，且与 kiosk 模式冲突
                                  */
-                                fullscreen: false,
+                                fullscreen: false, 
                                 // mac fullscreenable 设置为 true 会导致应用崩溃
-                                fullscreenable: false,
+                                fullscreenable: false, 
                                 // kiosk: true,
-                                backgroundColor: '#00000000',
-                                titleBarStyle: 'hidden',
-                                hasShadow: false,
-                                paintWhenInitiallyHidden: false,
+                                backgroundColor: '#00000000', titleBarStyle: 'hidden', hasShadow: false, paintWhenInitiallyHidden: false, 
                                 // mac 特有的属性
-                                roundedCorners: false,
-                                enableLargerThanScreen: false,
-                                acceptFirstMouse: true,
-                            });
+                                roundedCorners: false, enableLargerThanScreen: false, acceptFirstMouse: true }, (harmony_1.isHarmonyOS ? { displayId: display.id } : {})));
                             this.emit('windowCreated', this.$win);
                             // this.$win.addListener('show', () => {
                             //   this.$win?.focus();
@@ -339,39 +317,23 @@ var Window = /** @class */ (function (_super) {
     };
     Window.prototype.capture = function (display) {
         return __awaiter(this, void 0, void 0, function () {
-            var result, parsed, err_1, NodeScreenshots, capturer, image, err_2, sourcesOptions, sources, source;
-            var _this = this;
+            var dataUrl, NodeScreenshots, capturer, image, err_1, sourcesOptions, sources, source;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         this.logger("SCREENSHOTS:".concat(this.winId, ":capture"));
-                        if (!etsBridge) return [3 /*break*/, 4];
-                        _a.label = 1;
+                        if (!harmony_1.isHarmonyOS) return [3 /*break*/, 2];
+                        return [4 /*yield*/, (0, harmony_1.captureScreen)(display, this.logger)];
                     case 1:
-                        _a.trys.push([1, 3, , 4]);
-                        this.logger("SCREENSHOTS:".concat(this.winId, ":capture using etsBridge, display:"), JSON.stringify({id: display.id, x: display.x, y: display.y, width: display.width, height: display.height}));
-                        // 使用 display.id 来截取对应屏幕的截图
-                        // mode 格式: "full_{displayId}_png" 或 "full_0_png" (默认)
-                        var captureMode = "full_".concat(display.id, "_png");
-                        this.logger("SCREENSHOTS:".concat(this.winId, ":capture mode:"), captureMode);
-                        return [4 /*yield*/, etsBridge.callAsync('screenCapture', JSON.stringify({ mode: captureMode }))];
-                    case 2:
-                        result = _a.sent();
-                        parsed = JSON.parse(result);
-                        if (parsed.code === 0 && parsed.data) {
-                            this.logger("SCREENSHOTS:".concat(this.winId, ":capture etsBridge success, data len:"), parsed.data.length);
-                            return [2 /*return*/, "data:image/png;base64,".concat(parsed.data)];
+                        dataUrl = _a.sent();
+                        if (dataUrl) {
+                            return [2 /*return*/, dataUrl];
                         }
-                        this.logger("SCREENSHOTS:".concat(this.winId, ":capture etsBridge failed:"), parsed);
-                        throw new Error("etsBridge error: ".concat(result));
-                    case 3:
-                        err_1 = _a.sent();
-                        this.logger("SCREENSHOTS:".concat(this.winId, ":capture etsBridge error:"), err_1);
-                        return [3 /*break*/, 4];
-                    case 4:
-                        _a.trys.push([4, 7, , 9]);
+                        _a.label = 2;
+                    case 2:
+                        _a.trys.push([2, 5, , 7]);
                         return [4 /*yield*/, Promise.resolve().then(function () { return __importStar(require('node-screenshots')); })];
-                    case 5:
+                    case 3:
                         NodeScreenshots = (_a.sent()).Screenshots;
                         capturer = NodeScreenshots.fromPoint(display.x + display.width / 2, display.y + display.height / 2);
                         this.logger("SCREENSHOTS:".concat(this.winId, ":capture NodeScreenshots.fromPoint arguments %o"), display);
@@ -391,12 +353,12 @@ var Window = /** @class */ (function (_super) {
                             throw new Error("NodeScreenshots.fromDisplay(".concat(display.id, ") get null"));
                         }
                         return [4 /*yield*/, capturer.capture()];
-                    case 6:
+                    case 4:
                         image = _a.sent();
                         return [2 /*return*/, "data:image/png;base64,".concat(image.toString('base64'))];
-                    case 7:
-                        err_2 = _a.sent();
-                        this.logger("SCREENSHOTS:".concat(this.winId, ":capture NodeScreenshots capture() error %o"), err_2);
+                    case 5:
+                        err_1 = _a.sent();
+                        this.logger("SCREENSHOTS:".concat(this.winId, ":capture NodeScreenshots capture() error %o"), err_1);
                         sourcesOptions = {
                             types: ['screen'],
                             thumbnailSize: {
@@ -406,7 +368,7 @@ var Window = /** @class */ (function (_super) {
                         };
                         this.logger("SCREENSHOTS:".concat(this.winId, ":sourcesOptions"), sourcesOptions);
                         return [4 /*yield*/, electron_1.desktopCapturer.getSources(sourcesOptions)];
-                    case 8:
+                    case 6:
                         sources = _a.sent();
                         source = void 0;
                         // Linux系统上，screen.getDisplayNearestPoint 返回的 Display 对象的 id
@@ -423,7 +385,7 @@ var Window = /** @class */ (function (_super) {
                             throw new Error("Can't find screen source");
                         }
                         return [2 /*return*/, source.thumbnail.toDataURL()];
-                    case 9: return [2 /*return*/];
+                    case 7: return [2 /*return*/];
                 }
             });
         });
@@ -433,6 +395,25 @@ var Window = /** @class */ (function (_super) {
      */
     Window.prototype.listenIpc = function () {
         var _this = this;
+        /**
+         * Harmony 区域截图：renderer 调用此 IPC 获取选区背景图
+         */
+        electron_1.ipcMain.handle("SCREENSHOTS:".concat(this.winId, ":harmonyAreaCapture"), function () { return __awaiter(_this, void 0, void 0, function () {
+            var dataUrl;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        this.logger("SCREENSHOTS:".concat(this.winId, ":harmonyAreaCapture"));
+                        if (!harmony_1.isHarmonyOS) {
+                            return [2 /*return*/, null];
+                        }
+                        return [4 /*yield*/, (0, harmony_1.areaCapture)(this.logger)];
+                    case 1:
+                        dataUrl = _a.sent();
+                        return [2 /*return*/, dataUrl];
+                }
+            });
+        }); });
         /**
          * OK事件
          */

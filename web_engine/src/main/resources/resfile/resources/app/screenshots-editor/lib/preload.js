@@ -66,4 +66,11 @@ electron_1.contextBridge.exposeInMainWorld('screenshots', {
         }
         electron_1.ipcRenderer.off("SCREENSHOTS:".concat(winId, ":").concat(channel), listener);
     },
+    /**
+     * Harmony 区域截图：触发 screenshot.pick()，返回全屏 base64 背景图
+     */
+    harmonyAreaCapture: function () {
+        console.log('contextBridge harmonyAreaCapture');
+        return electron_1.ipcRenderer.invoke("SCREENSHOTS:".concat(winId, ":harmonyAreaCapture"));
+    },
 });
